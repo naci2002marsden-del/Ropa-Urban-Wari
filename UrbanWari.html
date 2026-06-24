@@ -1,0 +1,1123 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>UrbanWari–Guardianes del Tiempo</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700;900&family=Cinzel+Decorative:wght@400;700&family=EB+Garamond:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --cream: #F2EDD7;
+    --parchment: #E8DFBC;
+    --stone: #8B7355;
+    --dark-stone: #4A3728;
+    --red-mural: #8B2020;
+    --gold: #C9922A;
+    --gold-light: #E8B84B;
+    --orange-burn: #D4541A;
+    --ash: #6B6258;
+    --black-stone: #1A1208;
+    --sky-day: #4A7BA7;
+    --sky-dusk: #8B4513;
+    --nicho-shadow: rgba(0,0,0,0.55);
+    --wall-color: #C4A882;
+  }
+
+  * { margin:0; padding:0; box-sizing:border-box; }
+
+  body {
+    font-family: 'EB Garamond', Georgia, serif;
+    background: #0d0a06;
+    color: var(--cream);
+    overflow: hidden;
+    width: 100vw;
+    height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    user-select: none;
+  }
+
+  #game-container {
+    position: relative;
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+  }
+
+  /* SKY LAYER */
+  #sky {
+    position: absolute;
+    inset: 0;
+    transition: background 4s ease;
+    z-index: 0;
+  }
+
+  /* CLOUDS */
+  .cloud {
+    position: absolute;
+    border-radius: 50%;
+    opacity: 0;
+    filter: blur(8px);
+    animation: cloudDrift linear infinite;
+    pointer-events: none;
+  }
+
+  @keyframes cloudDrift {
+    from { transform: translateX(-200px); opacity: 0; }
+    5% { opacity: var(--cloud-max-opacity, 0.18); }
+    90% { opacity: var(--cloud-max-opacity, 0.18); }
+    to { transform: translateX(calc(100vw + 200px)); opacity: 0; }
+  }
+
+  /* MAIN CANVAS */
+  #temple-canvas {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 1;
+    cursor: crosshair;
+  }
+
+  /* HUD */
+  #hud {
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    z-index: 10;
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    padding: 14px 20px 0;
+    pointer-events: none;
+  }
+
+  #hud-left, #hud-right, #hud-center {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  #hud-center {
+    align-items: center;
+  }
+
+  .hud-label {
+    font-family: 'Cinzel', serif;
+    font-size: 11px;
+    letter-spacing: 0.15em;
+    color: var(--gold);
+    text-transform: uppercase;
+    opacity: 0.8;
+  }
+
+  .hud-value {
+    font-family: 'Cinzel', serif;
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--cream);
+    text-shadow: 0 0 12px rgba(201,146,42,0.6);
+  }
+
+  #sun-angle-display {
+    font-family: 'Cinzel', serif;
+    font-size: 13px;
+    color: var(--gold-light);
+    text-align: center;
+  }
+
+  /* INCENSARIOS */
+  #incensarios {
+    position: absolute;
+    bottom: 18px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 14px;
+    z-index: 10;
+    pointer-events: none;
+  }
+
+  .incensario {
+    width: 36px;
+    height: 44px;
+    position: relative;
+  }
+
+  .incensario svg {
+    width: 100%;
+    height: 100%;
+  }
+
+  /* MESSAGE FLASH */
+  #msg-flash {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-family: 'Cinzel Decorative', serif;
+    font-size: 20px;
+    color: var(--gold-light);
+    text-shadow: 0 0 20px rgba(232,184,75,0.9), 0 2px 8px rgba(0,0,0,0.9);
+    text-align: center;
+    opacity: 0;
+    pointer-events: none;
+    z-index: 20;
+    transition: opacity 0.15s;
+    white-space: nowrap;
+  }
+
+  #msg-flash.show {
+    opacity: 1;
+  }
+
+  /* SCREENS */
+  #screen-intro, #screen-victory, #screen-defeat {
+    position: absolute;
+    inset: 0;
+    z-index: 50;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 40px;
+    text-align: center;
+  }
+
+  #screen-intro {
+    background: radial-gradient(ellipse at center, #1a1005 0%, #0d0a06 100%);
+  }
+
+  #screen-victory {
+    background: radial-gradient(ellipse at center, #1a0f05 0%, #0a0805 100%);
+  }
+
+  #screen-defeat {
+    background: radial-gradient(ellipse at center, #2a0a0a 0%, #0a0605 100%);
+  }
+
+  #screen-defeat .screen-title {
+    color: #d06868;
+    text-shadow: 0 0 30px rgba(192,80,80,0.5);
+  }
+
+  #screen-defeat .screen-ornament {
+    color: #c05050;
+  }
+
+  .screen-ornament {
+    font-size: 36px;
+    color: var(--gold);
+    letter-spacing: 0.4em;
+    margin-bottom: 16px;
+    opacity: 0.7;
+  }
+
+  .screen-title {
+    font-family: 'Cinzel Decorative', serif;
+    font-size: clamp(22px, 4vw, 42px);
+    font-weight: 700;
+    color: var(--gold-light);
+    text-shadow: 0 0 30px rgba(232,184,75,0.5);
+    line-height: 1.2;
+    margin-bottom: 8px;
+  }
+
+  .screen-subtitle {
+    font-family: 'Cinzel', serif;
+    font-size: clamp(11px, 1.5vw, 14px);
+    color: var(--gold);
+    letter-spacing: 0.25em;
+    margin-bottom: 28px;
+    opacity: 0.8;
+  }
+
+  .screen-body {
+    font-family: 'EB Garamond', serif;
+    font-size: clamp(14px, 1.8vw, 18px);
+    line-height: 1.7;
+    color: var(--parchment);
+    max-width: 600px;
+    margin-bottom: 32px;
+    font-style: italic;
+  }
+
+  .btn-ritual {
+    font-family: 'Cinzel', serif;
+    font-size: 14px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--black-stone);
+    background: linear-gradient(135deg, var(--gold-light), var(--gold));
+    border: none;
+    padding: 14px 40px;
+    cursor: pointer;
+    clip-path: polygon(12px 0%, 100% 0%, calc(100% - 12px) 100%, 0% 100%);
+    transition: transform 0.15s, box-shadow 0.15s;
+  }
+
+  .btn-ritual:hover {
+    transform: scale(1.05);
+    box-shadow: 0 0 20px rgba(201,146,42,0.5);
+  }
+
+  #victory-code {
+    font-family: 'Cinzel', serif;
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--gold-light);
+    background: rgba(201,146,42,0.15);
+    border: 1px solid var(--gold);
+    padding: 12px 32px;
+    letter-spacing: 0.2em;
+    margin: 16px 0;
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+
+  #victory-code:hover {
+    background: rgba(201,146,42,0.3);
+  }
+
+  .copy-hint {
+    font-size: 12px;
+    color: var(--stone);
+    font-style: italic;
+    margin-bottom: 24px;
+  }
+
+  /* RESET BTN */
+  #btn-reset {
+    position: absolute;
+    top: 14px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-family: 'Cinzel', serif;
+    font-size: 10px;
+    letter-spacing: 0.15em;
+    color: var(--gold);
+    background: transparent;
+    border: 1px solid rgba(201,146,42,0.4);
+    padding: 5px 16px;
+    cursor: pointer;
+    z-index: 15;
+    opacity: 0.7;
+    transition: opacity 0.2s;
+    pointer-events: all;
+  }
+
+  #btn-reset:hover { opacity: 1; }
+
+  /* GLYPH POPUP */
+  #glyph-popup {
+    position: absolute;
+    z-index: 15;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.2s;
+    font-size: 32px;
+    text-shadow: 0 0 12px var(--gold);
+    filter: drop-shadow(0 0 8px rgba(201,146,42,0.8));
+  }
+
+  #glyph-popup.show { opacity: 1; }
+
+  /* FLAME PARTICLES */
+  .flame-particle {
+    position: absolute;
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    pointer-events: none;
+    z-index: 12;
+    animation: flameRise 1.2s ease-out forwards;
+  }
+
+  @keyframes flameRise {
+    0% { transform: translateY(0) scale(1); opacity: 1; }
+    100% { transform: translateY(-60px) scale(0.1); opacity: 0; }
+  }
+
+  /* HIDDEN */
+  .hidden { display: none !important; }
+
+  /* NICHO TARGET INDICATOR */
+  #nicho-indicator {
+    position: absolute;
+    z-index: 8;
+    pointer-events: none;
+    font-family: 'Cinzel', serif;
+    font-size: 10px;
+    color: var(--gold-light);
+    text-align: center;
+    animation: pulseIndicator 1.5s ease-in-out infinite;
+  }
+
+  @keyframes pulseIndicator {
+    0%, 100% { opacity: 0.6; transform: translateY(0) translateX(-50%); }
+    50% { opacity: 1; transform: translateY(-4px) translateX(-50%); }
+  }
+
+  #progress-bar-wrap {
+    position: absolute;
+    bottom: 70px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    pointer-events: none;
+  }
+
+  .progress-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: rgba(201,146,42,0.25);
+    border: 1px solid var(--gold);
+    transition: background 0.4s, box-shadow 0.4s;
+  }
+
+  .progress-dot.lit {
+    background: var(--gold-light);
+    box-shadow: 0 0 8px var(--gold);
+  }
+</style>
+</head>
+<body>
+
+<div id="game-container">
+  <div id="sky"></div>
+
+  <!-- Clouds injected by JS -->
+
+  <canvas id="temple-canvas"></canvas>
+
+  <!-- HUD -->
+  <div id="hud">
+    <div id="hud-left">
+      <span class="hud-label">Aciertos</span>
+      <span class="hud-value" id="score-display">0</span>
+    </div>
+    <div id="hud-center">
+      <span class="hud-label">Ángulo solar</span>
+      <span id="sun-angle-display">0°</span>
+      <span class="hud-label" style="margin-top:4px">Hora ritual</span>
+      <span id="time-display" class="hud-label" style="color:var(--cream);font-size:13px">alba</span>
+    </div>
+    <div id="hud-right" style="align-items:flex-end">
+      <span class="hud-label">Errores</span>
+      <span class="hud-value" id="miss-display" style="color:#c05050">0</span>
+    </div>
+  </div>
+
+  <button id="btn-reset" class="hidden">✦ Nuevo ritual</button>
+
+  <!-- Glyph popup -->
+  <div id="glyph-popup"></div>
+
+  <!-- Nicho indicator -->
+  <div id="nicho-indicator">▼ NICHO ACTIVO</div>
+
+  <!-- Incensarios -->
+  <div id="incensarios"></div>
+
+  <!-- Progress dots -->
+  <div id="progress-bar-wrap"></div>
+
+  <!-- Message flash -->
+  <div id="msg-flash"></div>
+
+  <!-- INTRO SCREEN -->
+  <div id="screen-intro">
+    <div class="screen-ornament">◈ ◈ ◈</div>
+    <div class="screen-title">UrbanWari</div>
+    <div class="screen-subtitle">Guardianes del Tiempo</div>
+    <p class="screen-body">
+      En el templo en forma de «D» de Vegachayuq Moqo, los astrónomos wari
+      observaban el sol para marcar los ciclos agrícolas y rituales.
+      Toca la pantalla cuando la sombra del reloj solar coincida
+      con el nicho sagrado indicado. Cinco aciertos completan el ritual,
+      pero quince errores romperán la conexión con los astros.
+    </p>
+    <button class="btn-ritual" onclick="startGame()">✦ Iniciar el ritual ✦</button>
+    <p style="margin-top:20px;font-size:12px;color:var(--stone);font-style:italic">
+      Basado en «Wari: Precursores de los imperios andinos»<br>
+      Ochatoma &amp; Cabrera, UNSCH 2023
+    </p>
+  </div>
+
+  <!-- VICTORY SCREEN -->
+  <div id="screen-victory" class="hidden">
+    <div class="screen-ornament">☽ ☆ ☽</div>
+    <div class="screen-title">Ritual Completado</div>
+    <div class="screen-subtitle">Los ancestros han recibido tu ofrenda</div>
+    <p class="screen-body">
+      Has alineado con precisión astronómica las cinco sombras sagradas.
+      El ciclo ritual wari se ha completado. Como guardián del tiempo,
+      recibes el favor de los ancestros.
+    </p>
+    <div id="victory-code" onclick="copyCode()" title="Clic para copiar">WARI-INTI-10</div>
+    <p class="copy-hint">Clic para copiar · 10% descuento colección «Wari: Precursores»</p>
+    <button class="btn-ritual" onclick="startGame()">✦ Nuevo ritual ✦</button>
+  </div>
+
+  <!-- DEFEAT SCREEN -->
+  <div id="screen-defeat" class="hidden">
+    <div class="screen-ornament">✦ ✕ ✦</div>
+    <div class="screen-title">Ritual Interrumpido</div>
+    <div class="screen-subtitle">Los ancestros retiran su favor</div>
+    <p class="screen-body">
+      Demasiadas sombras desalineadas han roto la conexión con el cielo.
+      El intiqawana ha perdido su poder y el ritual debe comenzar de nuevo
+      desde el alba.
+    </p>
+    <button class="btn-ritual" onclick="startGame()">✦ Reintentar ritual ✦</button>
+  </div>
+</div>
+
+<script>
+// ── CONSTANTS ──────────────────────────────────────────────────────────────
+
+const NICHO_COUNT = 12;
+const HITS_TO_WIN = 5;
+const MAX_MISSES = 10;
+const SHADOW_SPEED = 0.00028; // fraction per ms (crosses in ~60s)
+const HIT_MARGIN = 0.05; // 5% of total width
+const CYCLE_MS = 64000; // one full day/night cycle
+
+const SUCCESS_MSGS = [
+  '¡Ofrenda de Spondylus!',
+  'El Felino vuela · Ccoa',
+  'La Serpiente Bicéfala',
+  'El Halcón Protector',
+  '¡Qonopa sagrada!',
+  'El Puma del Sol',
+  '¡Ofrenda aceptada!'
+];
+
+const GLYPHS = ['🦁', '🦅', '🐍', '🌞', '🌊', '⭐', '🔥'];
+
+// ── STATE ──────────────────────────────────────────────────────────────────
+
+let canvas, ctx;
+let W, H;
+let running = false;
+let shadowX = 0;      // 0..1 fraction of temple floor width
+let lastTs = 0;
+let score = 0;
+let misses = 0;
+let activeNichoIdx = 0;
+let nichoOrder = [];
+let nichoPositions = []; // computed each resize
+let templeLayout = {};
+let audioCtx = null;
+let flashTimer = null;
+let glyphTimer = null;
+let dayProgress = 0; // 0..1 within cycle
+let incensariosLit = 0;
+
+// ── AUDIO ──────────────────────────────────────────────────────────────────
+
+function getAudio() {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  return audioCtx;
+}
+
+function playBeep(freq, dur, type = 'sine', gain = 0.3) {
+  try {
+    const ac = getAudio();
+    const osc = ac.createOscillator();
+    const gn = ac.createGain();
+    osc.connect(gn);
+    gn.connect(ac.destination);
+    osc.type = type;
+    osc.frequency.setValueAtTime(freq, ac.currentTime);
+    gn.gain.setValueAtTime(gain, ac.currentTime);
+    gn.gain.exponentialRampToValueAtTime(0.001, ac.currentTime + dur);
+    osc.start();
+    osc.stop(ac.currentTime + dur);
+  } catch(e) {}
+}
+
+function playSuccess() {
+  playBeep(523, 0.12, 'sine', 0.25);
+  setTimeout(() => playBeep(659, 0.12, 'sine', 0.22), 120);
+  setTimeout(() => playBeep(784, 0.25, 'sine', 0.2), 240);
+}
+
+function playFail() {
+  playBeep(200, 0.3, 'sawtooth', 0.2);
+}
+
+// ── LAYOUT ────────────────────────────────────────────────────────────────
+
+function computeLayout() {
+  W = canvas.width = canvas.clientWidth || window.innerWidth;
+  H = canvas.height = canvas.clientHeight || window.innerHeight;
+
+  const cx = W / 2;
+  const cy = H / 2;
+  const r = Math.min(W, H) * 0.38;
+  const wallThick = 22;
+
+  // temple floor is a semicircle (D shape) + rectangle
+  // curved muro: upper half circle
+  // straight muro: south wall
+  const floorW = r * 1.85;
+  const floorX0 = cx - floorW / 2;
+  const floorX1 = cx + floorW / 2;
+  const floorTop = cy - r * 0.55;
+  const floorBot = cy + r * 0.6;
+
+  templeLayout = { cx, cy, r, wallThick, floorW, floorX0, floorX1, floorTop, floorBot };
+
+  // Place nichos on the curved wall (arc from 200° to 340° going through north)
+  nichoPositions = [];
+  const arcStart = Math.PI * 1.12;
+  const arcEnd   = Math.PI * 1.88;
+  for (let i = 0; i < NICHO_COUNT; i++) {
+    const t = i / (NICHO_COUNT - 1);
+    const angle = arcStart + t * (arcEnd - arcStart);
+    const nx = cx + (r - wallThick/2 - 1) * Math.cos(angle);
+    const ny = cy + (r - wallThick/2 - 1) * Math.sin(angle) - r * 0.04;
+    nichoPositions.push({ x: nx, y: ny, angle, t });
+  }
+
+  buildIncensarios();
+  buildProgressDots();
+}
+
+// ── INCENSARIOS UI ─────────────────────────────────────────────────────────
+
+function buildIncensarios() {
+  const wrap = document.getElementById('incensarios');
+  wrap.innerHTML = '';
+  for (let i = 0; i < HITS_TO_WIN; i++) {
+    const div = document.createElement('div');
+    div.className = 'incensario';
+    div.id = 'inc-' + i;
+    div.innerHTML = `<svg viewBox="0 0 36 44" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <rect x="12" y="32" width="12" height="8" rx="2" fill="${i < incensariosLit ? '#C9922A' : '#3a2e1e'}" stroke="#6B6258" stroke-width="0.8"/>
+      <path d="M10 32 L18 20 L26 32Z" fill="${i < incensariosLit ? '#D4541A' : '#2a2010'}" stroke="#6B6258" stroke-width="0.8"/>
+      <circle cx="18" cy="20" r="5" fill="${i < incensariosLit ? '#E8B84B' : '#1a1408'}" stroke="#6B6258" stroke-width="0.8"/>
+      <line x1="18" y1="15" x2="18" y2="4" stroke="${i < incensariosLit ? '#E8B84B' : '#3a3020'}" stroke-width="1.5" stroke-linecap="round"/>
+      ${i < incensariosLit ? '<circle cx="18" cy="4" r="2.5" fill="#FFD580" opacity="0.9"/>' : ''}
+    </svg>`;
+    wrap.appendChild(div);
+  }
+}
+
+function buildProgressDots() {
+  const wrap = document.getElementById('progress-bar-wrap');
+  wrap.innerHTML = '';
+  for (let i = 0; i < HITS_TO_WIN; i++) {
+    const d = document.createElement('div');
+    d.className = 'progress-dot' + (i < incensariosLit ? ' lit' : '');
+    d.id = 'dot-' + i;
+    wrap.appendChild(d);
+  }
+}
+
+function lightIncensario(idx) {
+  const inc = document.getElementById('inc-' + idx);
+  if (!inc) return;
+  inc.innerHTML = `<svg viewBox="0 0 36 44" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <rect x="12" y="32" width="12" height="8" rx="2" fill="#C9922A" stroke="#6B6258" stroke-width="0.8"/>
+    <path d="M10 32 L18 20 L26 32Z" fill="#D4541A" stroke="#6B6258" stroke-width="0.8"/>
+    <circle cx="18" cy="20" r="5" fill="#E8B84B" stroke="#6B6258" stroke-width="0.8"/>
+    <line x1="18" y1="15" x2="18" y2="4" stroke="#E8B84B" stroke-width="1.5" stroke-linecap="round"/>
+    <circle cx="18" cy="4" r="2.5" fill="#FFD580" opacity="0.9"/>
+  </svg>`;
+  const dot = document.getElementById('dot-' + idx);
+  if (dot) dot.classList.add('lit');
+  spawnFlames(inc);
+}
+
+function spawnFlames(parent) {
+  const rect = parent.getBoundingClientRect();
+  for (let i = 0; i < 8; i++) {
+    const p = document.createElement('div');
+    p.className = 'flame-particle';
+    p.style.left = (rect.left + rect.width/2 + (Math.random()-0.5)*16) + 'px';
+    p.style.top  = (rect.top + 8) + 'px';
+    p.style.background = Math.random() > 0.5 ? '#E8B84B' : '#D4541A';
+    p.style.animationDuration = (0.8 + Math.random()*0.7) + 's';
+    p.style.animationDelay = (Math.random()*0.3) + 's';
+    document.body.appendChild(p);
+    setTimeout(() => p.remove(), 1500);
+  }
+}
+
+// ── SHUFFLE ────────────────────────────────────────────────────────────────
+
+function shuffleNichos() {
+  const arr = Array.from({length: NICHO_COUNT}, (_, i) => i);
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
+// ── SKY / DAY NIGHT ────────────────────────────────────────────────────────
+
+const SKY_PHASES = [
+  { p: 0.00, color: '#0d0a1a' },  // deep night
+  { p: 0.15, color: '#1a1230' },
+  { p: 0.25, color: '#5c3a1e' },  // pre-dawn
+  { p: 0.35, color: '#c47a2e' },  // sunrise
+  { p: 0.45, color: '#6a9dc8' },  // morning
+  { p: 0.55, color: '#4A7BA7' },  // midday
+  { p: 0.65, color: '#7aA0B8' },  // afternoon
+  { p: 0.75, color: '#c47a2e' },  // sunset
+  { p: 0.85, color: '#4a2a10' },  // dusk
+  { p: 0.95, color: '#15101a' },  // night
+  { p: 1.00, color: '#0d0a1a' },
+];
+
+function lerpColor(c1, c2, t) {
+  const p1 = parseInt(c1.slice(1),16);
+  const p2 = parseInt(c2.slice(1),16);
+  const r = Math.round(((p1>>16)&255) * (1-t) + ((p2>>16)&255)*t);
+  const g = Math.round(((p1>>8)&255)  * (1-t) + ((p2>>8)&255)*t);
+  const b = Math.round((p1&255)       * (1-t) + (p2&255)*t);
+  return `rgb(${r},${g},${b})`;
+}
+
+function getSkyColor(p) {
+  for (let i = 0; i < SKY_PHASES.length - 1; i++) {
+    const a = SKY_PHASES[i], b = SKY_PHASES[i+1];
+    if (p >= a.p && p <= b.p) {
+      const t = (p - a.p) / (b.p - a.p);
+      return lerpColor(a.color, b.color, t);
+    }
+  }
+  return SKY_PHASES[0].color;
+}
+
+function updateSky(p) {
+  document.getElementById('sky').style.background = getSkyColor(p);
+}
+
+// Clouds
+function buildClouds() {
+  const container = document.getElementById('game-container');
+  for (let i = 0; i < 5; i++) {
+    const c = document.createElement('div');
+    c.className = 'cloud';
+    const size = 80 + Math.random() * 120;
+    const duration = 30000 + Math.random() * 50000;
+    const delay = Math.random() * -60000;
+    c.style.cssText = `
+      width:${size*2}px; height:${size}px;
+      top:${5 + Math.random()*25}%;
+      background: #b8b0a0;
+      --cloud-max-opacity: ${0.08 + Math.random()*0.12};
+      animation-duration:${duration}ms;
+      animation-delay:${delay}ms;
+    `;
+    c.style.zIndex = 2;
+    container.appendChild(c);
+  }
+}
+
+// ── DRAW ───────────────────────────────────────────────────────────────────
+
+function drawTemple(activeNicho, shadow) {
+  const { cx, cy, r, wallThick, floorX0, floorX1, floorTop, floorBot } = templeLayout;
+
+  ctx.clearRect(0, 0, W, H);
+
+  // Parchment-texture floor base
+  const floorGrad = ctx.createRadialGradient(cx, cy, 0, cx, cy, r*0.95);
+  floorGrad.addColorStop(0, '#ddd4a8');
+  floorGrad.addColorStop(0.7, '#c8ba8a');
+  floorGrad.addColorStop(1, '#b8aa7a');
+  ctx.fillStyle = floorGrad;
+  ctx.beginPath();
+  ctx.arc(cx, cy - r*0.04, r * 0.82, Math.PI, 0);
+  ctx.lineTo(cx + floorX1 - cx, floorBot);
+  ctx.lineTo(cx - (floorX1-cx), floorBot);
+  ctx.closePath();
+  ctx.fill();
+
+  // Burn marks on floor (pozzolana oxidation)
+  const burnSeeds = [
+    {x:0.38,y:0.55,rx:28,ry:18,c:'rgba(100,60,20,0.18)'},
+    {x:0.55,y:0.42,rx:20,ry:14,c:'rgba(80,40,10,0.14)'},
+    {x:0.46,y:0.68,rx:36,ry:22,c:'rgba(110,70,25,0.16)'},
+    {x:0.62,y:0.6, rx:18,ry:12,c:'rgba(70,40,15,0.12)'},
+    {x:0.35,y:0.7, rx:22,ry:15,c:'rgba(90,55,20,0.13)'},
+    {x:0.51,y:0.52,rx:16,ry:10,c:'rgba(140,80,30,0.1)'},
+  ];
+  burnSeeds.forEach(b => {
+    const bx = floorX0 + b.x * (floorX1-floorX0);
+    const by = floorTop + b.y * (floorBot-floorTop);
+    ctx.save();
+    ctx.translate(bx, by);
+    ctx.scale(1, 0.55);
+    ctx.beginPath();
+    ctx.ellipse(0, 0, b.rx, b.ry, 0, 0, Math.PI*2);
+    ctx.fillStyle = b.c;
+    ctx.fill();
+    ctx.restore();
+  });
+
+  // Curved muro (wall) – stone fill
+  ctx.beginPath();
+  ctx.arc(cx, cy - r*0.04, r, Math.PI * 1.12, Math.PI * 1.88);
+  ctx.arc(cx, cy - r*0.04, r - wallThick, Math.PI * 1.88, Math.PI * 1.12, true);
+  ctx.closePath();
+  const wallGrad = ctx.createRadialGradient(cx, cy, r - wallThick, cx, cy, r + 5);
+  wallGrad.addColorStop(0, '#b89a72');
+  wallGrad.addColorStop(0.5, '#a08860');
+  wallGrad.addColorStop(1, '#7a6548');
+  ctx.fillStyle = wallGrad;
+  ctx.fill();
+  ctx.strokeStyle = '#5a4835';
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+
+  // South straight wall
+  const swL = cx - (floorX1 - cx);
+  const swR = cx + (floorX1 - cx);
+  ctx.fillStyle = '#b89a72';
+  ctx.fillRect(swL, floorBot, swR - swL, wallThick);
+  ctx.strokeStyle = '#5a4835';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(swL, floorBot, swR - swL, wallThick);
+
+  // South entrance (jambas)
+  const jamW = 18, jamH = wallThick + 8;
+  const entX = cx - 12;
+  ctx.fillStyle = '#7a5a3a';
+  ctx.fillRect(entX - jamW*2, floorBot - 6, jamW, jamH + 6);
+  ctx.fillRect(entX + jamW, floorBot - 6, jamW, jamH + 6);
+  ctx.fillStyle = '#1a1208';
+  ctx.fillRect(entX - jamW, floorBot - 2, jamW * 2, jamH + 2);
+  ctx.fillStyle = '#5a4535';
+  ctx.font = `bold ${Math.max(9,W*0.009)}px Cinzel, serif`;
+  ctx.textAlign = 'center';
+  ctx.fillText('ACCESO SUR', cx - 2, floorBot + wallThick + 16);
+
+  // ── NICHOS ──────────────────────────────────────────────────────────────
+  nichoPositions.forEach((n, i) => {
+    const isActive = (i === activeNicho);
+    const nw = Math.max(14, W * 0.018);
+    const nh = Math.max(18, H * 0.034);
+
+    // trapezoid nicho (jambas)
+    const inset = 3;
+    ctx.save();
+    ctx.translate(n.x, n.y);
+    ctx.rotate(n.angle + Math.PI/2);
+
+    // outer frame
+    ctx.beginPath();
+    ctx.moveTo(-nw-inset, -nh/2);
+    ctx.lineTo( nw+inset, -nh/2);
+    ctx.lineTo( nw, nh/2);
+    ctx.lineTo(-nw, nh/2);
+    ctx.closePath();
+    ctx.fillStyle = isActive ? 'rgba(201,146,42,0.18)' : 'rgba(20,14,5,0.7)';
+    ctx.fill();
+    ctx.strokeStyle = isActive ? '#E8B84B' : '#5a4530';
+    ctx.lineWidth = isActive ? 2.5 : 1;
+    ctx.stroke();
+
+    // inner void
+    ctx.beginPath();
+    ctx.rect(-nw*0.65, -nh*0.45, nw*1.3, nh*0.85);
+    ctx.fillStyle = '#0d0a06';
+    ctx.fill();
+
+    if (isActive) {
+      // golden shimmer
+      ctx.shadowColor = '#E8B84B';
+      ctx.shadowBlur = 18;
+      ctx.strokeStyle = '#FFD580';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(-nw*0.65, -nh*0.45, nw*1.3, nh*0.85);
+      ctx.shadowBlur = 0;
+    }
+
+    ctx.restore();
+  });
+
+  // ── INTIQAWANA (reloj solar) ─────────────────────────────────────────
+  const iX = cx, iY = cy + (floorBot - floorTop) * 0.05;
+  const iR = Math.max(24, W * 0.028);
+
+  // stone ring
+  for (let s = 0; s < 8; s++) {
+    const sa = (s / 8) * Math.PI * 2;
+    const sx = iX + (iR + 8) * Math.cos(sa);
+    const sy = iY + (iR + 8) * Math.sin(sa) * 0.6;
+    ctx.beginPath();
+    ctx.ellipse(sx, sy, 6, 4, sa, 0, Math.PI * 2);
+    ctx.fillStyle = '#9a8a6a';
+    ctx.fill();
+    ctx.strokeStyle = '#5a4830';
+    ctx.lineWidth = 0.8;
+    ctx.stroke();
+  }
+
+  // base disk
+  ctx.beginPath();
+  ctx.ellipse(iX, iY, iR, iR * 0.62, 0, 0, Math.PI * 2);
+  ctx.fillStyle = '#c8b888';
+  ctx.fill();
+  ctx.strokeStyle = '#7a6545';
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+
+  // pilar tubular
+  const pW = Math.max(6, W * 0.006);
+  const pH = Math.max(28, H * 0.055);
+  ctx.fillStyle = '#a09070';
+  ctx.fillRect(iX - pW/2, iY - pH, pW, pH);
+  ctx.strokeStyle = '#6a5a40';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(iX - pW/2, iY - pH, pW, pH);
+  // pilar top
+  ctx.beginPath();
+  ctx.ellipse(iX, iY - pH, pW/2+2, pW*0.4, 0, 0, Math.PI*2);
+  ctx.fillStyle = '#b8a878';
+  ctx.fill();
+
+  // ── SHADOW ──────────────────────────────────────────────────────────────
+  const shadowLen = (floorX1 - floorX0) * 0.35;
+  const shadowW = Math.max(7, W * 0.007);
+  const sAbsX = floorX0 + shadow * (floorX1 - floorX0);
+  const sY = iY - pH;
+
+  // angle feedback
+  const angleDeg = Math.round(shadow * 180);
+  document.getElementById('sun-angle-display').textContent = angleDeg + '°';
+
+  // time of day text
+  const times = ['alba','mañana','mediodía','tarde','ocaso','noche'];
+  const tIdx = Math.min(5, Math.floor(shadow * 6));
+  document.getElementById('time-display').textContent = times[tIdx];
+
+  // shadow line from pilar to ground
+  ctx.save();
+  ctx.globalAlpha = 0.42;
+  ctx.strokeStyle = '#1a1208';
+  ctx.lineWidth = shadowW;
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.moveTo(iX, sY);
+  ctx.lineTo(sAbsX, iY + 4);
+  ctx.stroke();
+  // end blob
+  ctx.beginPath();
+  ctx.ellipse(sAbsX, iY + 6, shadowW*1.4, shadowW*0.7, 0, 0, Math.PI*2);
+  ctx.fillStyle = '#1a1208';
+  ctx.fill();
+  ctx.restore();
+
+  // ── ACTIVE NICHO INDICATOR ───────────────────────────────────────────
+  if (activeNicho >= 0 && activeNicho < NICHO_COUNT) {
+    const nPos = nichoPositions[activeNicho];
+    const ind = document.getElementById('nicho-indicator');
+    ind.style.left = nPos.x + 'px';
+    ind.style.top  = (nPos.y - 48) + 'px';
+    ind.classList.remove('hidden');
+  }
+
+  // ── SUN ─────────────────────────────────────────────────────────────
+  const sunAngle = shadow * Math.PI; // 0=left, π=right (arc across sky)
+  const sunR = r * 0.92;
+  const sunX = cx - sunR * Math.cos(sunAngle); // east to west
+  const sunY = floorTop - 30 - Math.abs(Math.sin(sunAngle)) * H * 0.28;
+  const sunSize = Math.max(12, W * 0.018);
+  const sunAlpha = Math.max(0.1, Math.sin(sunAngle));
+
+  ctx.save();
+  ctx.globalAlpha = sunAlpha;
+  const sunGrad = ctx.createRadialGradient(sunX, sunY, 0, sunX, sunY, sunSize * 2.5);
+  sunGrad.addColorStop(0, '#FFE080');
+  sunGrad.addColorStop(0.4, '#E8A020');
+  sunGrad.addColorStop(1, 'rgba(200,80,0,0)');
+  ctx.fillStyle = sunGrad;
+  ctx.beginPath();
+  ctx.arc(sunX, sunY, sunSize * 2.5, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#FFF0A0';
+  ctx.beginPath();
+  ctx.arc(sunX, sunY, sunSize, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+}
+
+// ── GAME LOOP ──────────────────────────────────────────────────────────────
+
+function loop(ts) {
+  if (!running) return;
+  const dt = Math.min(ts - lastTs, 50);
+  lastTs = ts;
+
+  // Day progress (for sky)
+  dayProgress = (dayProgress + dt / CYCLE_MS) % 1;
+  updateSky(dayProgress);
+
+  // Shadow moves as sun moves (shadow = 0..1)
+  shadowX = (shadowX + SHADOW_SPEED * dt) % 1;
+
+  // draw
+  const currentNicho = nichoOrder[activeNichoIdx % nichoOrder.length];
+  drawTemple(currentNicho, shadowX);
+
+  requestAnimationFrame(loop);
+}
+
+// ── INTERACTION ────────────────────────────────────────────────────────────
+
+function onTap(e) {
+  e.preventDefault();
+  if (!running) return;
+
+  const currentNicho = nichoOrder[activeNichoIdx % nichoOrder.length];
+  const nPos = nichoPositions[currentNicho];
+  const { floorX0, floorX1 } = templeLayout;
+
+  // Shadow absolute X
+  const shadowAbsX = floorX0 + shadowX * (floorX1 - floorX0);
+
+  // Distance from shadow tip to nicho
+  const dist = Math.abs(shadowAbsX - nPos.x) / (floorX1 - floorX0);
+
+  if (dist <= HIT_MARGIN) {
+    onHit(nPos);
+  } else {
+    onMiss();
+  }
+}
+
+function onHit(nPos) {
+  score++;
+  incensariosLit = score;
+  document.getElementById('score-display').textContent = score;
+  lightIncensario(score - 1);
+  playSuccess();
+
+  const msg = SUCCESS_MSGS[Math.floor(Math.random() * SUCCESS_MSGS.length)];
+  showFlash(msg, '#E8B84B');
+
+  const glyph = GLYPHS[Math.floor(Math.random() * GLYPHS.length)];
+  showGlyph(glyph, nPos.x, nPos.y);
+
+  activeNichoIdx++;
+  if (activeNichoIdx >= HITS_TO_WIN) {
+    setTimeout(showVictory, 1600);
+  }
+}
+
+function onMiss() {
+  misses++;
+  document.getElementById('miss-display').textContent = misses;
+  playFail();
+
+  if (misses >= MAX_MISSES) {
+    running = false;
+    showFlash('El intiqawana pierde su poder...', '#c05050');
+    setTimeout(showDefeat, 1200);
+    return;
+  }
+
+  showFlash('La sombra no se alinea.\nEl ritual debe ser preciso.', '#c05050');
+}
+
+// ── FLASH ─────────────────────────────────────────────────────────────────
+
+function showFlash(txt, color) {
+  const el = document.getElementById('msg-flash');
+  el.textContent = txt;
+  el.style.color = color;
+  el.classList.add('show');
+  if (flashTimer) clearTimeout(flashTimer);
+  flashTimer = setTimeout(() => el.classList.remove('show'), 1800);
+}
+
+function showGlyph(g, x, y) {
+  const el = document.getElementById('glyph-popup');
+  el.textContent = g;
+  el.style.left = x + 'px';
+  el.style.top  = (y - 20) + 'px';
+  el.classList.add('show');
+  if (glyphTimer) clearTimeout(glyphTimer);
+  glyphTimer = setTimeout(() => el.classList.remove('show'), 1200);
+}
+
+// ── START / RESET ──────────────────────────────────────────────────────────
+
+function startGame() {
+  document.getElementById('screen-intro').classList.add('hidden');
+  document.getElementById('screen-victory').classList.add('hidden');
+  document.getElementById('screen-defeat').classList.add('hidden');
+  document.getElementById('btn-reset').classList.remove('hidden');
+
+  score = 0;
+  misses = 0;
+  incensariosLit = 0;
+  activeNichoIdx = 0;
+  shadowX = 0.02;
+  dayProgress = 0.35; // start at sunrise
+
+  document.getElementById('score-display').textContent = '0';
+  document.getElementById('miss-display').textContent = '0';
+
+  nichoOrder = shuffleNichos();
+  buildIncensarios();
+  buildProgressDots();
+
+  running = true;
+  lastTs = performance.now();
+  requestAnimationFrame(loop);
+}
+
+function showVictory() {
+  running = false;
+  document.getElementById('screen-victory').classList.remove('hidden');
+  document.getElementById('nicho-indicator').classList.add('hidden');
+}
+
+function showDefeat() {
+  running = false;
+  document.getElementById('screen-defeat').classList.remove('hidden');
+  document.getElementById('nicho-indicator').classList.add('hidden');
+}
+
+function copyCode() {
+  navigator.clipboard.writeText('WARI-INTI-10').catch(() => {});
+  showFlash('¡Código copiado!', '#E8B84B');
+}
+
+// ── INIT ───────────────────────────────────────────────────────────────────
+
+window.addEventListener('DOMContentLoaded', () => {
+  canvas = document.getElementById('temple-canvas');
+  ctx = canvas.getContext('2d');
+
+  computeLayout();
+  buildClouds();
+
+  window.addEventListener('resize', () => {
+    computeLayout();
+  });
+
+  canvas.addEventListener('click', onTap);
+  canvas.addEventListener('touchstart', onTap, { passive: false });
+
+  document.getElementById('btn-reset').addEventListener('click', startGame);
+
+  // Draw static frame on intro
+  updateSky(0.35);
+  drawTemple(-1, 0.3);
+});
+</script>
+</body>
+</html>
